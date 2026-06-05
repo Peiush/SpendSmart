@@ -1,0 +1,52 @@
+'use client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/query/keys';
+import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/utils/api';
+import type { Goal, CreateGoalInput } from '@/types';
+
+export function useGoals() {
+  return useQuery({
+    queryKey: queryKeys.goals.all,
+    queryFn: () => apiGet<Goal[]>('/api/goals'),
+  });
+}
+
+export function useCreateGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateGoalInput) => apiPost<Goal>('/api/goals', data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.goals.all });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboard.summary });
+    },
+  });
+}
+
+export function useUpdateGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: Partial<Goal> & { id: string }) =>
+      apiPatch<Goal>(`/api/goals/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.goals.all }),
+  });
+}
+
+export function useDeleteGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete(`/api/goals/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.goals.all }),
+  });
+}
+
+export function useAddFunds() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, amount }: { id: string; amount: number }) =>
+      apiPost<Goal>(`/api/goals/${id}/funds`, { amount }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.goals.all });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboard.summary });
+    },
+  });
+}

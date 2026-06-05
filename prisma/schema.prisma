@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  passwordHash  String?
+  googleId      String?    @unique
+  name          String
+  currency      String     @default("INR")
+  timezone      String     @default("Asia/Kolkata")
+  monthlyBudget Decimal    @default(0) @db.Decimal(12, 2)
+  dailyLimit    Decimal    @default(0) @db.Decimal(12, 2)
+  totpSecret    String?
+  totpEnabled   Boolean    @default(false)
+  preferences   Json       @default("{}")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  expenses   Expense[]
+  categories Category[]
+  budgets    Budget[]
+  goals      Goal[]
+  alerts     Alert[]
+
+  @@map("users")
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  userId    String?
+  name      String
+  short     String
+  icon      String
+  colorHex  String
+  tintHex   String
+  isDefault Boolean   @default(false)
+  sortOrder Int       @default(0)
+
+  user     User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses Expense[]
+  budgets  Budget[]
+
+  @@unique([userId, name])
+  @@map("categories")
+}
+
+model Expense {
+  id            String      @id @default(cuid())
+  userId        String
+  categoryId    String
+  amount        Decimal     @db.Decimal(12, 2)
+  date          DateTime    @db.Date
+  merchant      String
+  note          String?
+  type          ExpenseType
+  tags          String[]
+  isRecurring   Boolean     @default(false)
+  recurringRule String?
+  receiptUrl    String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@index([userId, date])
+  @@index([userId, categoryId])
+  @@map("expenses")
+}
+
+enum ExpenseType {
+  Needs
+  Wants
+  Savings
+}
+
+model Budget {
+  id         String     @id @default(cuid())
+  userId     String
+  categoryId String?
+  amount     Decimal    @db.Decimal(12, 2)
+  periodType PeriodType @default(MONTHLY)
+  startDate  DateTime   @db.Date
+  isActive   Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id])
+  alerts   Alert[]
+
+  @@unique([userId, categoryId, periodType])
+  @@map("budgets")
+}
+
+enum PeriodType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+model Alert {
+  id           String    @id @default(cuid())
+  userId       String
+  budgetId     String
+  thresholdPct Int
+  triggeredAt  DateTime  @default(now())
+  dismissedAt  DateTime?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  @@map("alerts")
+}
+
+model Goal {
+  id            String    @id @default(cuid())
+  userId        String
+  name          String
+  emoji         String    @default("🎯")
+  targetAmount  Decimal   @db.Decimal(12, 2)
+  currentAmount Decimal   @default(0) @db.Decimal(12, 2)
+  deadline      DateTime? @db.Date
+  autoAllocate  Boolean   @default(false)
+  color         String    @default("#E8735A")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("goals")
+}
