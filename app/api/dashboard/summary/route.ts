@@ -15,19 +15,21 @@ export async function GET(req: NextRequest) {
     select: { monthlyBudget: true, dailyLimit: true },
   });
 
-  const [monthlyAgg, todayAgg, weekAgg, needsWantsAgg] = await prisma.$transaction([
-    prisma.expense.aggregate({
-      where: { userId, date: { gte: monthStart, lte: monthEnd } },
-      _sum: { amount: true },
-    }),
-    prisma.expense.aggregate({
-      where: { userId, date: { gte: todayStart, lte: todayEnd } },
-      _sum: { amount: true },
-    }),
-    prisma.expense.aggregate({
-      where: { userId, date: { gte: weekStart } },
-      _sum: { amount: true },
-    }),
+  const [[monthlyAgg, todayAgg, weekAgg], needsWantsAgg] = await Promise.all([
+    prisma.$transaction([
+      prisma.expense.aggregate({
+        where: { userId, date: { gte: monthStart, lte: monthEnd } },
+        _sum: { amount: true },
+      }),
+      prisma.expense.aggregate({
+        where: { userId, date: { gte: todayStart, lte: todayEnd } },
+        _sum: { amount: true },
+      }),
+      prisma.expense.aggregate({
+        where: { userId, date: { gte: weekStart } },
+        _sum: { amount: true },
+      }),
+    ]),
     prisma.expense.groupBy({
       by: ['type'],
       where: { userId, date: { gte: monthStart, lte: monthEnd } },
