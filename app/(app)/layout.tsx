@@ -7,6 +7,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useUser } from '@/hooks/useUser';
 import { AddExpenseModal } from '@/components/modals/AddExpenseModal';
+import { EditExpenseModal } from '@/components/modals/EditExpenseModal';
 
 const NAV = [
   { key: 'dashboard', label: 'Home',     icon: 'home',   href: '/dashboard' },
@@ -46,7 +47,7 @@ const LogoutIcon = () => (
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { darkMode, toggleDark } = useUIStore();
+  const { darkMode, toggleDark, editingExpense, closeEditExpense } = useUIStore();
   const clearAuth = useAuthStore(s => s.clearAuth);
   const { data: user } = useUser();
   const [modal, setModal] = useState(false);
@@ -125,6 +126,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </nav>
 
       <AddExpenseModal open={modal} onClose={() => setModal(false)} />
+      <EditExpenseModal expense={editingExpense} onClose={closeEditExpense} />
     </div>
   );
 }

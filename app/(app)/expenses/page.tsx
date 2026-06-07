@@ -3,12 +3,15 @@ import { useState } from 'react';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useCategories, useCatBy } from '@/hooks/useCategories';
 import { Card, IconDisc, CategoryChip } from '@/components/ui';
+import { useUIStore } from '@/stores/uiStore';
 import { formatINR, relDate } from '@/lib/utils/format';
 import type { ExpenseFilters, ExpenseType } from '@/types';
 
 export default function ExpensesPage() {
   const { data: categories = [] } = useCategories();
   const catBy = useCatBy();
+
+  const { openEditExpense } = useUIStore();
 
   const [q, setQ] = useState('');
   const [showFilter, setShowFilter] = useState(false);
@@ -139,7 +142,8 @@ export default function ExpensesPage() {
                 const cat = catBy[e.category?.name ?? ''];
                 if (!cat) return null;
                 return (
-                  <Card key={e.id} hover style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <Card key={e.id} hover style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 14, position: 'relative', cursor: 'pointer' }}
+                    onClick={() => openEditExpense(e)}>
                     <IconDisc category={cat} size={48} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
@@ -157,6 +161,7 @@ export default function ExpensesPage() {
                       <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-primary)', fontFamily: 'var(--font-head)' }}>−{formatINR(e.amount)}</div>
                       <span className={'ss-need-badge ' + (e.type === 'Needs' ? 'is-need' : 'is-want')}>{e.type}</span>
                     </div>
+                    <div style={{ flexShrink: 0, opacity: 0.5, fontSize: 13, color: 'var(--text-muted)' }}>✏️</div>
                   </Card>
                 );
               })}

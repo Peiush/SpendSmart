@@ -16,8 +16,7 @@ export function CategoryChip({ category, size = 'sm' }: { category: Category; si
   const pad = size === 'sm' ? '3px 10px' : '5px 12px';
   const fs = size === 'sm' ? 12 : 13;
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: category.tintHex, color: category.colorHex, padding: pad, borderRadius: 999, fontSize: fs, fontWeight: 600, whiteSpace: 'nowrap', fontFamily: 'var(--font-body)' }}>
-      <span style={{ fontSize: fs + 1 }}>{category.icon}</span>
+    <span style={{ display: 'inline-flex', alignItems: 'center', background: category.tintHex, color: category.colorHex, padding: pad, borderRadius: 999, fontSize: fs, fontWeight: 600, whiteSpace: 'nowrap', fontFamily: 'var(--font-body)' }}>
       {category.short}
     </span>
   );

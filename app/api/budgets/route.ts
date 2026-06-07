@@ -8,10 +8,13 @@ export async function GET(req: NextRequest) {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-  const budgets = await prisma.budget.findMany({
-    where: { userId, isActive: true },
-    include: { category: true },
-  });
+  const [budgets, user] = await Promise.all([
+    prisma.budget.findMany({
+      where: { userId, isActive: true },
+      include: { category: true },
+    }),
+    prisma.user.findUnique({ where: { id: userId }, select: { monthlyBudget: true } }),
+  ]);
 
   // Compute spent for each budget's current period
   const spent = await prisma.expense.groupBy({
@@ -26,12 +29,33 @@ export async function GET(req: NextRequest) {
     where: { userId, date: { gte: monthStart, lte: monthEnd } },
     _sum: { amount: true },
   });
+  const totalSpentAmount = Number(totalSpent._sum.amount ?? 0);
 
-  return NextResponse.json(budgets.map(b => ({
+  const result = budgets.map(b => ({
     ...b,
     amount: Number(b.amount),
-    spent: b.categoryId ? (spentMap[b.categoryId] ?? 0) : Number(totalSpent._sum.amount ?? 0),
-  })));
+    spent: b.categoryId ? (spentMap[b.categoryId] ?? 0) : totalSpentAmount,
+  }));
+
+  // Inject a synthetic global budget from user.monthlyBudget when no DB-level global budget exists
+  const hasGlobalBudget = result.some(b => !b.categoryId);
+  if (!hasGlobalBudget && user?.monthlyBudget) {
+    result.unshift({
+      id: '__global__',
+      userId,
+      categoryId: null,
+      category: null,
+      amount: Number(user.monthlyBudget),
+      spent: totalSpentAmount,
+      periodType: 'MONTHLY',
+      startDate: monthStart,
+      isActive: true,
+      createdAt: monthStart,
+      updatedAt: now,
+    } as never);
+  }
+
+  return NextResponse.json(result);
 }
 
 export async function POST(req: NextRequest) {

@@ -54,7 +54,11 @@ export async function GET(req: NextRequest) {
   ]);
 
   return NextResponse.json({
-    expenses: expenses.map(e => ({ ...e, amount: Number(e.amount) })),
+    expenses: expenses.map(e => ({
+      ...e,
+      amount: Number(e.amount),
+      date: e.date instanceof Date ? e.date.toISOString().slice(0, 10) : String(e.date).slice(0, 10),
+    })),
     total,
     page,
     pages: Math.ceil(total / limit),

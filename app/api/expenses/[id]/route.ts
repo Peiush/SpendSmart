@@ -9,7 +9,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     include: { category: true },
   });
   if (!expense) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  return NextResponse.json({ ...expense, amount: Number(expense.amount) });
+  return NextResponse.json({ ...expense, amount: Number(expense.amount), date: expense.date instanceof Date ? expense.date.toISOString().slice(0, 10) : String(expense.date).slice(0, 10) });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -27,7 +27,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     data,
     include: { category: true },
   });
-  return NextResponse.json({ ...updated, amount: Number(updated.amount) });
+  return NextResponse.json({ ...updated, amount: Number(updated.amount), date: updated.date instanceof Date ? updated.date.toISOString().slice(0, 10) : String(updated.date).slice(0, 10) });
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
