@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
   const stateKey = `oauth:state:${state}`;
   const valid = await redis.get(stateKey);
   if (!valid) {
+    console.error('[OAuth] State invalid or expired:', state);
     loginUrl.searchParams.set('error', 'invalid_state');
     return NextResponse.redirect(loginUrl);
   }
@@ -52,6 +53,8 @@ export async function GET(req: NextRequest) {
   });
 
   if (!tokenRes.ok) {
+    const body = await tokenRes.text();
+    console.error('[OAuth] Token exchange failed:', tokenRes.status, body);
     loginUrl.searchParams.set('error', 'token_exchange_failed');
     return NextResponse.redirect(loginUrl);
   }
@@ -76,31 +79,36 @@ export async function GET(req: NextRequest) {
   }
 
   // Upsert user: find by googleId OR email, then link/create
-  let user = await prisma.user.findFirst({
-    where: { OR: [{ googleId: googleUser.id }, { email: googleUser.email }] },
-  });
+  let user;
+  try {
+    user = await prisma.user.findFirst({
+      where: { OR: [{ googleId: googleUser.id }, { email: googleUser.email }] },
+    });
 
-  if (user) {
-    // Link Google account if not already linked
-    if (!user.googleId) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { googleId: googleUser.id },
+    if (user) {
+      if (!user.googleId) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { googleId: googleUser.id },
+        });
+      }
+    } else {
+      user = await prisma.user.create({
+        data: {
+          email: googleUser.email,
+          googleId: googleUser.id,
+          name: googleUser.name,
+          passwordHash: null,
+          currency: 'INR',
+          monthlyBudget: 20000,
+          dailyLimit: 700,
+        },
       });
     }
-  } else {
-    // Create new user from Google profile
-    user = await prisma.user.create({
-      data: {
-        email: googleUser.email,
-        googleId: googleUser.id,
-        name: googleUser.name,
-        passwordHash: null,
-        currency: 'INR',
-        monthlyBudget: 20000,
-        dailyLimit: 700,
-      },
-    });
+  } catch (err) {
+    console.error('[OAuth] DB error during user upsert:', err);
+    loginUrl.searchParams.set('error', 'db_error');
+    return NextResponse.redirect(loginUrl);
   }
 
   // Issue app JWT tokens
@@ -117,7 +125,6 @@ export async function GET(req: NextRequest) {
 
   const res = NextResponse.redirect(callbackUrl);
 
-  // httpOnly refresh token (same as password login)
   res.cookies.set('refreshToken', refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

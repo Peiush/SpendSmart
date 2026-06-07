@@ -1,5 +1,5 @@
 'use client';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -8,8 +8,11 @@ function OAuthCallbackContent() {
   const searchParams = useSearchParams();
   const setAuth = useAuthStore(s => s.setAuth);
   const [status, setStatus] = useState<'loading' | 'error'>('loading');
+  const processed = useRef(false);
 
   useEffect(() => {
+    if (processed.current) return;
+
     const token = searchParams.get('token');
 
     if (!token) {
@@ -18,6 +21,7 @@ function OAuthCallbackContent() {
       return;
     }
 
+    processed.current = true;
     // Remove token from URL immediately (security hygiene)
     window.history.replaceState({}, '', '/callback');
 
