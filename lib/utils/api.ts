@@ -1,16 +1,27 @@
 import { getAccessToken } from '@/stores/authStore';
 
+// Shared promise so concurrent 401s all wait for the same single refresh
+let _refreshPromise: Promise<string | null> | null = null;
+
 async function refreshToken(): Promise<string | null> {
-  try {
-    const res = await fetch('/api/auth/refresh', { method: 'POST' });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const { useAuthStore } = await import('@/stores/authStore');
-    useAuthStore.getState().setAuth(data.user, data.accessToken);
-    return data.accessToken;
-  } catch {
-    return null;
-  }
+  if (_refreshPromise) return _refreshPromise;
+
+  _refreshPromise = (async () => {
+    try {
+      const res = await fetch('/api/auth/refresh', { method: 'POST' });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const { useAuthStore } = await import('@/stores/authStore');
+      useAuthStore.getState().setAuth(data.user, data.accessToken);
+      return data.accessToken;
+    } catch {
+      return null;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+
+  return _refreshPromise;
 }
 
 export async function apiFetch<T>(
