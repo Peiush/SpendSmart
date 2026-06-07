@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { Suspense, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useGSAP } from '@gsap/react';
@@ -16,7 +16,7 @@ const OAUTH_ERRORS: Record<string, string> = {
   oauth_failed: 'Google sign-in failed. Please try again.',
 };
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const setAuth = useAuthStore(s => s.setAuth);
@@ -172,6 +172,14 @@ export default function LoginPage() {
   );
 }
 
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
 function GoogleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -182,4 +190,3 @@ function GoogleIcon() {
     </svg>
   );
 }
-

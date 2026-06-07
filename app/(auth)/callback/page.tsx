@@ -1,9 +1,9 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 
-export default function OAuthCallbackPage() {
+function OAuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const setAuth = useAuthStore(s => s.setAuth);
@@ -60,5 +60,13 @@ export default function OAuthCallbackPage() {
         </p>
       )}
     </div>
+  );
+}
+
+export default function OAuthCallbackPage() {
+  return (
+    <Suspense>
+      <OAuthCallbackContent />
+    </Suspense>
   );
 }

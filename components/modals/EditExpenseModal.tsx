@@ -78,7 +78,7 @@ export function EditExpenseModal({ expense, onClose }: Props) {
             <div style={{ fontSize: 40, marginBottom: 12 }}>🗑️</div>
             <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'var(--font-head)', color: 'var(--text-primary)', marginBottom: 8 }}>Delete expense?</div>
             <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 28 }}>
-              "{expense.merchant}" · ₹{expense.amount} will be permanently removed.
+              &quot;{expense.merchant}&quot; · ₹{expense.amount} will be permanently removed.
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="ss-btn-outline ss-btn-block" onClick={() => setConfirmDelete(false)}>Cancel</button>

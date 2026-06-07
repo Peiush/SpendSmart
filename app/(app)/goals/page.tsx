@@ -95,7 +95,7 @@ export default function GoalsPage() {
           <div style={{ fontSize: 34 }}>🔥</div>
           <div style={{ flex: 1, minWidth: 180 }}>
             <div style={{ fontWeight: 800, fontSize: 18, fontFamily: 'var(--font-head)' }}>14-day saving streak!</div>
-            <div style={{ fontSize: 13.5, color: 'rgba(255,255,255,.55)', marginTop: 2 }}>Keep going — you're building a great habit.</div>
+            <div style={{ fontSize: 13.5, color: 'rgba(255,255,255,.55)', marginTop: 2 }}>Keep going — you&apos;re building a great habit.</div>
           </div>
           <div style={{ display: 'flex', gap: 9 }}>
             {['M','T','W','T','F','S','S'].map((d, i) => (

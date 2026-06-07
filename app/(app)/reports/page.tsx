@@ -171,7 +171,7 @@ function MonthlyReport() {
             <div>
               <div style={{ fontWeight: 700, fontSize: 15.5, color: '#8A5A12', fontFamily: 'var(--font-head)' }}>Spending forecast</div>
               <p style={{ margin: '6px 0 0', fontSize: 14, lineHeight: 1.55, color: '#946417' }}>
-                At your current pace you'll spend <strong>{formatINR(data.forecast)}</strong> by month end{over > 0 && <> — <strong>{formatINR(over)} over</strong> budget</>}.
+                At your current pace you&apos;ll spend <strong>{formatINR(data.forecast)}</strong> by month end{over > 0 && <> — <strong>{formatINR(over)} over</strong> budget</>}.
               </p>
             </div>
           </div>

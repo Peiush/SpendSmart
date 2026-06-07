@@ -2,10 +2,10 @@
 import { useDashboardSummary } from '@/hooks/useDashboard';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useBudgets } from '@/hooks/useBudgets';
-import { Card, Ring, ProgressBar, SectionTitle, IconDisc, CategoryChip, ChangeBadge } from '@/components/ui';
+import { Card, Ring, ProgressBar, SectionTitle, IconDisc, CategoryChip } from '@/components/ui';
 import { Sparkline } from '@/components/ui/charts';
 import { useCountUp } from '@/hooks/useCountUp';
-import { useCategories, useCatBy } from '@/hooks/useCategories';
+import { useCatBy } from '@/hooks/useCategories';
 import { formatINR, relDate } from '@/lib/utils/format';
 import { budgetStatus } from '@/lib/utils/budget';
 import { useWeeklyReport } from '@/hooks/useReports';
@@ -22,7 +22,6 @@ export default function DashboardPage() {
   const { data: expensesData } = useExpenses({ limit: 5 });
   const { data: budgets = [] } = useBudgets();
   const catBy = useCatBy();
-  const today = new Date().toISOString().slice(0, 10).slice(0, 7);
   const { data: weekly } = useWeeklyReport(new Date().toISOString().slice(0, 10));
 
   const spent = summary?.spent ?? 0;
@@ -50,7 +49,7 @@ export default function DashboardPage() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--coral)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             </div>
             <div style={{ flex: 1, minWidth: 220 }}>
-              <div style={{ fontWeight: 800, fontSize: 15, fontFamily: 'var(--font-head)', marginBottom: 4 }}>This week's insight</div>
+              <div style={{ fontWeight: 800, fontSize: 15, fontFamily: 'var(--font-head)', marginBottom: 4 }}>This week&apos;s insight</div>
               <div style={{ fontSize: 13.5, color: 'rgba(255,255,255,.7)', lineHeight: 1.6 }}>
                 <strong style={{ color: 'var(--coral)' }}>Top: {insight.topCategory}</strong> · {insight.biggestChange}
                 <br />{insight.suggestion}
@@ -91,7 +90,7 @@ export default function DashboardPage() {
       {/* Stat cards + Forecast — 3 columns on wide desktop */}
       <div className="ss-stats-3">
         <Card hover style={{ padding: 20 }}>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>Today's Spend</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>Today&apos;s Spend</div>
           <Money value={todaySpend} style={{ fontSize: 30, fontWeight: 800, fontFamily: 'var(--font-head)', color: 'var(--text-primary)', display: 'block', margin: '6px 0 12px' }} />
           <ProgressBar pct={dailyPct} color={dailyPct > 100 ? '#E05252' : '#4CAF82'} height={8} />
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>

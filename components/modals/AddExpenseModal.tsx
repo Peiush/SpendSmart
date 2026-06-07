@@ -57,7 +57,7 @@ export function AddExpenseModal({ open, onClose }: { open: boolean; onClose: () 
           <div style={{ padding: '56px 24px', textAlign: 'center' }}>
             <div className="ss-check">✓</div>
             <div style={{ fontSize: 19, fontWeight: 800, fontFamily: 'var(--font-head)', color: 'var(--text-primary)', marginTop: 16 }}>Expense saved!</div>
-            <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>Added to today's log.</div>
+            <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>Added to today&apos;s log.</div>
           </div>
         ) : (
           <>

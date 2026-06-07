@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   const weekParam = req.nextUrl.searchParams.get('week');
   const { thisMonday, thisSunday, lastMonday, lastSunday } = getWeekBounds(weekParam);
 
-  const [thisWeekBycat, lastWeekBycat, thisWeekByDay] = await prisma.$transaction([
+  const [thisWeekBycat, lastWeekBycat, thisWeekByDay] = await Promise.all([
     prisma.expense.groupBy({
       by: ['categoryId'],
       where: { userId, date: { gte: thisMonday, lte: thisSunday } },

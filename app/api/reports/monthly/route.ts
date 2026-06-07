@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   const lastEnd = new Date(year, mon - 1, 0);
   const threeStart = new Date(year, mon - 4, 1);
 
-  const [thisBycat, lastBycat, threeBycat] = await prisma.$transaction([
+  const [thisBycat, lastBycat, threeBycat] = await Promise.all([
     prisma.expense.groupBy({
       by: ['categoryId'],
       where: { userId, date: { gte: monthStart, lte: monthEnd } },
