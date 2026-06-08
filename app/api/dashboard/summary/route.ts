@@ -4,11 +4,22 @@ import { prisma } from '@/lib/db/prisma';
 export async function GET(req: NextRequest) {
   const userId = req.headers.get('x-user-id')!;
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  // Build date strings from LOCAL time so comparisons against @db.Date columns
+  // use the correct calendar date regardless of server timezone.
+  const localYMD = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const todayStart = new Date(localYMD); // parses as UTC midnight → Prisma sends '2026-06-08'
   const todayEnd = new Date(todayStart.getTime() + 86400000 - 1);
-  const weekStart = new Date(now.getTime() - 6 * 86400000);
+
+  const monthStart = new Date(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`);
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const monthEnd = new Date(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(lastDayOfMonth)}T23:59:59.999Z`);
+
+  const weekAgoDate = new Date(now.getTime() - 6 * 86400000);
+  const weekStart = new Date(
+    `${weekAgoDate.getFullYear()}-${pad(weekAgoDate.getMonth() + 1)}-${pad(weekAgoDate.getDate())}`
+  );
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
