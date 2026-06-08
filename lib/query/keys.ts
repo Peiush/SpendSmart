@@ -23,4 +23,7 @@ export const queryKeys = {
   categories: ['categories'] as const,
   user: ['user'] as const,
   alerts: ['alerts'] as const,
+  recurring: {
+    all: ['recurring'] as const,
+  },
 };

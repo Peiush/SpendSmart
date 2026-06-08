@@ -24,11 +24,12 @@ model User {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
-  expenses   Expense[]
-  categories Category[]
-  budgets    Budget[]
-  goals      Goal[]
-  alerts     Alert[]
+  expenses        Expense[]
+  categories      Category[]
+  budgets         Budget[]
+  goals           Goal[]
+  alerts          Alert[]
+  recurringRules  RecurringRule[]
 
   @@map("users")
 }
@@ -44,36 +45,69 @@ model Category {
   isDefault Boolean   @default(false)
   sortOrder Int       @default(0)
 
-  user     User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expenses Expense[]
-  budgets  Budget[]
+  user           User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses       Expense[]
+  budgets        Budget[]
+  recurringRules RecurringRule[]
 
   @@unique([userId, name])
   @@map("categories")
 }
 
 model Expense {
-  id            String      @id @default(cuid())
-  userId        String
-  categoryId    String
-  amount        Decimal     @db.Decimal(12, 2)
-  date          DateTime    @db.Date
-  merchant      String
-  note          String?
-  type          ExpenseType
-  tags          String[]
-  isRecurring   Boolean     @default(false)
-  recurringRule String?
-  receiptUrl    String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id              String         @id @default(cuid())
+  userId          String
+  categoryId      String
+  amount          Decimal        @db.Decimal(12, 2)
+  date            DateTime       @db.Date
+  merchant        String
+  note            String?
+  type            ExpenseType
+  tags            String[]
+  isRecurring     Boolean        @default(false)
+  recurringRule   String?
+  recurringRuleId String?
+  receiptUrl      String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [categoryId], references: [id])
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      Category        @relation(fields: [categoryId], references: [id])
+  recurringDef  RecurringRule?  @relation(fields: [recurringRuleId], references: [id], onDelete: SetNull)
 
   @@index([userId, date])
   @@index([userId, categoryId])
   @@map("expenses")
+}
+
+model RecurringRule {
+  id          String      @id @default(cuid())
+  userId      String
+  categoryId  String
+  amount      Decimal     @db.Decimal(12, 2)
+  merchant    String
+  note        String?
+  type        ExpenseType
+  tags        String[]
+  frequency   RecurFreq
+  startDate   DateTime    @db.Date
+  nextDueDate DateTime    @db.Date
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  Category  @relation(fields: [categoryId], references: [id])
+  expenses  Expense[]
+
+  @@map("recurring_rules")
+}
+
+enum RecurFreq {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
 }
 
 enum ExpenseType {

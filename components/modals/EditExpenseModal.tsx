@@ -141,8 +141,22 @@ export function EditExpenseModal({ expense, onClose }: Props) {
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
               <span style={{ fontSize: 14.5, color: 'var(--text-primary)', fontWeight: 500 }}>🔁 Recurring expense</span>
-              <Toggle on={recurring} onChange={setRecurring} />
+              {expense.isRecurring && expense.recurringRule ? (
+                <span style={{
+                  fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
+                  background: 'var(--coral-light)', color: 'var(--coral)', border: '1px solid var(--coral)',
+                }}>
+                  {expense.recurringRule}
+                </span>
+              ) : (
+                <Toggle on={recurring} onChange={setRecurring} />
+              )}
             </div>
+            {expense.isRecurring && expense.recurringRule && (
+              <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+                This is part of a recurring series. Manage it in the <strong>Recurring</strong> tab.
+              </div>
+            )}
 
             <button className="ss-btn-coral ss-btn-block" style={{ marginTop: 22 }}
               disabled={!amount || !catId || updateExpense.isPending} onClick={save}>

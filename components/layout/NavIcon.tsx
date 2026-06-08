@@ -7,6 +7,7 @@ const paths: Record<string, React.ReactNode> = {
   wallet: <><rect x="3" y="6" width="18" height="13" rx="3" /><path d="M3 10h18" /><circle cx="16.5" cy="13.5" r="1.2" fill="currentColor" stroke="none" /></>,
   target: <><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" /></>,
   gear:   <><circle cx="12" cy="12" r="3.2" /><path d="M12 2.5v3M12 18.5v3M21.5 12h-3M5.5 12h-3M18 6l-2 2M8 16l-2 2M18 18l-2-2M8 8 6 6" /></>,
+  refresh: <><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" /><path d="M21 3v5h-5" /><path d="M3 21v-5h5" /></>,
 };
 
 export function NavIcon({ name, active }: { name: string; active: boolean }) {

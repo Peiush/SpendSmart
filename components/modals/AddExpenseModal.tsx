@@ -3,11 +3,20 @@ import { useState, useEffect } from 'react';
 import { Toggle } from '@/components/ui';
 import { useCategories } from '@/hooks/useCategories';
 import { useCreateExpense } from '@/hooks/useExpenses';
-import type { ExpenseType } from '@/types';
+import { useCreateRecurringRule } from '@/hooks/useRecurring';
+import type { ExpenseType, RecurFreq } from '@/types';
+
+const FREQ_OPTIONS: { value: RecurFreq; label: string; icon: string }[] = [
+  { value: 'DAILY',   label: 'Daily',   icon: '📅' },
+  { value: 'WEEKLY',  label: 'Weekly',  icon: '🗓️' },
+  { value: 'MONTHLY', label: 'Monthly', icon: '📆' },
+  { value: 'YEARLY',  label: 'Yearly',  icon: '🔄' },
+];
 
 export function AddExpenseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: categories = [] } = useCategories();
   const createExpense = useCreateExpense();
+  const createRecurring = useCreateRecurringRule();
 
   const [amount, setAmount] = useState('');
   const [catId, setCatId] = useState<string | null>(null);
@@ -16,11 +25,16 @@ export function AddExpenseModal({ open, onClose }: { open: boolean; onClose: () 
   const [note, setNote] = useState('');
   const [tags, setTags] = useState('');
   const [recurring, setRecurring] = useState(false);
+  const [frequency, setFrequency] = useState<RecurFreq>('MONTHLY');
   const [receipt, setReceipt] = useState<{ name: string; url: string } | null>(null);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (open) { setAmount(''); setCatId(null); setType('Needs'); setMerchant(''); setNote(''); setTags(''); setRecurring(false); setReceipt(null); setSaved(false); }
+    if (open) {
+      setAmount(''); setCatId(null); setType('Needs'); setMerchant('');
+      setNote(''); setTags(''); setRecurring(false); setFrequency('MONTHLY');
+      setReceipt(null); setSaved(false);
+    }
   }, [open]);
 
   if (!open) return null;
@@ -36,19 +50,36 @@ export function AddExpenseModal({ open, onClose }: { open: boolean; onClose: () 
   const save = async () => {
     if (!amount || !catId) return;
     const today = new Date().toISOString().slice(0, 10);
-    await createExpense.mutateAsync({
-      categoryId: catId,
-      amount: Number(amount),
-      date: today,
-      merchant: merchant || 'Unknown',
-      note: note || undefined,
-      type,
-      tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
-      isRecurring: recurring,
-    });
+
+    if (recurring) {
+      await createRecurring.mutateAsync({
+        categoryId: catId,
+        amount: Number(amount),
+        merchant: merchant || 'Unknown',
+        note: note || undefined,
+        type,
+        tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+        frequency,
+        startDate: today,
+      });
+    } else {
+      await createExpense.mutateAsync({
+        categoryId: catId,
+        amount: Number(amount),
+        date: today,
+        merchant: merchant || 'Unknown',
+        note: note || undefined,
+        type,
+        tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+        isRecurring: false,
+      });
+    }
+
     setSaved(true);
     setTimeout(onClose, 950);
   };
+
+  const isPending = createExpense.isPending || createRecurring.isPending;
 
   return (
     <div className="ss-modal-overlay" onClick={onClose}>
@@ -56,8 +87,12 @@ export function AddExpenseModal({ open, onClose }: { open: boolean; onClose: () 
         {saved ? (
           <div style={{ padding: '56px 24px', textAlign: 'center' }}>
             <div className="ss-check">✓</div>
-            <div style={{ fontSize: 19, fontWeight: 800, fontFamily: 'var(--font-head)', color: 'var(--text-primary)', marginTop: 16 }}>Expense saved!</div>
-            <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>Added to today&apos;s log.</div>
+            <div style={{ fontSize: 19, fontWeight: 800, fontFamily: 'var(--font-head)', color: 'var(--text-primary)', marginTop: 16 }}>
+              {recurring ? 'Recurring expense set!' : 'Expense saved!'}
+            </div>
+            <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>
+              {recurring ? `Repeats ${frequency.toLowerCase()} automatically.` : 'Added to today\'s log.'}
+            </div>
           </div>
         ) : (
           <>
@@ -102,6 +137,36 @@ export function AddExpenseModal({ open, onClose }: { open: boolean; onClose: () 
               <Toggle on={recurring} onChange={setRecurring} />
             </div>
 
+            {recurring && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>REPEAT EVERY</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {FREQ_OPTIONS.map(f => (
+                    <button
+                      key={f.value}
+                      onClick={() => setFrequency(f.value)}
+                      style={{
+                        flex: 1,
+                        padding: '9px 4px',
+                        borderRadius: 12,
+                        border: `2px solid ${frequency === f.value ? 'var(--coral)' : 'var(--border)'}`,
+                        background: frequency === f.value ? 'var(--coral-light)' : 'var(--surface)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 4,
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <span style={{ fontSize: 18 }}>{f.icon}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: frequency === f.value ? 'var(--coral)' : 'var(--text-muted)' }}>{f.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div style={{ marginTop: 16 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
                 <input type="file" accept="image/jpeg,image/png" style={{ display: 'none' }} onChange={handleReceipt} />
@@ -118,8 +183,8 @@ export function AddExpenseModal({ open, onClose }: { open: boolean; onClose: () 
             </div>
 
             <button className="ss-btn-coral ss-btn-block" style={{ marginTop: 22 }}
-              disabled={!amount || !catId || createExpense.isPending} onClick={save}>
-              {createExpense.isPending ? 'Saving…' : 'Save expense'}
+              disabled={!amount || !catId || isPending} onClick={save}>
+              {isPending ? 'Saving…' : recurring ? `Set ${frequency.toLowerCase()} expense` : 'Save expense'}
             </button>
           </>
         )}

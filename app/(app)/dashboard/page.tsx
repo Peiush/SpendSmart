@@ -1,4 +1,5 @@
 'use client';
+import { useEffect } from 'react';
 import { useDashboardSummary } from '@/hooks/useDashboard';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useBudgets } from '@/hooks/useBudgets';
@@ -9,6 +10,7 @@ import { useCatBy } from '@/hooks/useCategories';
 import { formatINR, relDate } from '@/lib/utils/format';
 import { budgetStatus } from '@/lib/utils/budget';
 import { useWeeklyReport } from '@/hooks/useReports';
+import { useProcessRecurring } from '@/hooks/useRecurring';
 import { useRouter } from 'next/navigation';
 
 function Money({ value, style }: { value: number; style?: React.CSSProperties }) {
@@ -18,6 +20,12 @@ function Money({ value, style }: { value: number; style?: React.CSSProperties })
 
 export default function DashboardPage() {
   const router = useRouter();
+  const processRecurring = useProcessRecurring();
+
+  useEffect(() => {
+    processRecurring.mutate();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { data: summary } = useDashboardSummary();
   const { data: expensesData } = useExpenses({ limit: 5 });
   const { data: budgets = [] } = useBudgets();

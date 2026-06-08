@@ -10,17 +10,18 @@ import { AddExpenseModal } from '@/components/modals/AddExpenseModal';
 import { EditExpenseModal } from '@/components/modals/EditExpenseModal';
 
 const NAV = [
-  { key: 'dashboard', label: 'Home',     icon: 'home',   href: '/dashboard' },
-  { key: 'expenses',  label: 'Expenses', icon: 'list',   href: '/expenses' },
-  { key: 'reports',   label: 'Reports',  icon: 'chart',  href: '/reports' },
-  { key: 'budgets',   label: 'Budgets',  icon: 'wallet', href: '/budgets' },
-  { key: 'goals',     label: 'Goals',    icon: 'target', href: '/goals' },
-  { key: 'settings',  label: 'Settings', icon: 'gear',   href: '/settings' },
+  { key: 'dashboard', label: 'Home',      icon: 'home',    href: '/dashboard' },
+  { key: 'expenses',  label: 'Expenses',  icon: 'list',    href: '/expenses' },
+  { key: 'recurring', label: 'Recurring', icon: 'refresh', href: '/recurring' },
+  { key: 'reports',   label: 'Reports',   icon: 'chart',   href: '/reports' },
+  { key: 'budgets',   label: 'Budgets',   icon: 'wallet',  href: '/budgets' },
+  { key: 'goals',     label: 'Goals',     icon: 'target',  href: '/goals' },
+  { key: 'settings',  label: 'Settings',  icon: 'gear',    href: '/settings' },
 ];
 
 const TITLES: Record<string, string> = {
-  '/dashboard': 'Dashboard', '/expenses': 'Expenses', '/reports': 'Reports',
-  '/budgets': 'Budgets', '/goals': 'Savings Goals', '/settings': 'Settings',
+  '/dashboard': 'Dashboard', '/expenses': 'Expenses', '/recurring': 'Recurring',
+  '/reports': 'Reports', '/budgets': 'Budgets', '/goals': 'Savings Goals', '/settings': 'Settings',
 };
 
 const SunIcon = () => (

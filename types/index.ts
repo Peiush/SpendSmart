@@ -4,6 +4,7 @@
 
 export type ExpenseType = 'Needs' | 'Wants' | 'Savings';
 export type PeriodType = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
+export type RecurFreq = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
 
 export interface User {
   id: string;
@@ -156,7 +157,36 @@ export interface CreateExpenseInput {
   tags?: string[];
   isRecurring?: boolean;
   recurringRule?: string;
+  recurringRuleId?: string;
   receiptUrl?: string;
+}
+
+export interface RecurringRule {
+  id: string;
+  userId: string;
+  categoryId: string;
+  category: Category;
+  amount: number;
+  merchant: string;
+  note: string | null;
+  type: ExpenseType;
+  tags: string[];
+  frequency: RecurFreq;
+  startDate: string;
+  nextDueDate: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CreateRecurringRuleInput {
+  categoryId: string;
+  amount: number;
+  merchant: string;
+  note?: string;
+  type: ExpenseType;
+  tags?: string[];
+  frequency: RecurFreq;
+  startDate: string;
 }
 
 export interface CreateGoalInput {
