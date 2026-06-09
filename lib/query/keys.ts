@@ -19,6 +19,7 @@ export const queryKeys = {
   reports: {
     weekly: (week: string) => ['reports', 'weekly', week] as const,
     monthly: (month: string) => ['reports', 'monthly', month] as const,
+    daily: (date: string) => ['reports', 'daily', date] as const,
   },
   categories: ['categories'] as const,
   user: ['user'] as const,

@@ -50,3 +50,24 @@ export function useAddFunds() {
     },
   });
 }
+
+export interface AutoAllocateResult {
+  allocated?: boolean;
+  skipped?: boolean;
+  reason?: string;
+  surplus?: number;
+  distributions?: Array<{ goalId: string; amount: number }>;
+}
+
+export function useAutoAllocate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiPost<AutoAllocateResult>('/api/goals/auto-allocate', {}),
+    onSuccess: (data) => {
+      if (data.allocated) {
+        qc.invalidateQueries({ queryKey: queryKeys.goals.all });
+        qc.invalidateQueries({ queryKey: queryKeys.dashboard.summary });
+      }
+    },
+  });
+}

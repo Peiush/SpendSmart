@@ -124,6 +124,14 @@ export interface MonthlyReport {
   forecast: number;
 }
 
+export interface DailyReport {
+  date: string;
+  total: number;
+  prevDayTotal: number;
+  byCategory: Array<{ icon: string; name: string; color: string; tintHex: string; amount: number; count: number }>;
+  expenses: Expense[];
+}
+
 export interface ExpenseFilters {
   q?: string;
   month?: string;

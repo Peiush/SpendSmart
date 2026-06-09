@@ -1,7 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useGoals, useCreateGoal, useUpdateGoal, useAddFunds } from '@/hooks/useGoals';
+import { useGoals, useCreateGoal, useUpdateGoal, useAddFunds, useAutoAllocate } from '@/hooks/useGoals';
 import { Card, ProgressBar, Toggle } from '@/components/ui';
 import { formatINR } from '@/lib/utils/format';
 import { useMounted } from '@/hooks/useMounted';
@@ -17,10 +17,23 @@ export default function GoalsPage() {
   const updateGoal = useUpdateGoal();
   const addFundsMutation = useAddFunds();
 
+  const autoAllocate = useAutoAllocate();
+  const [allocBanner, setAllocBanner] = useState<{ surplus: number; count: number } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [addFundsGoal, setAddFundsGoal] = useState<typeof goals[0] | null>(null);
   const [fundsAmount, setFundsAmount] = useState('');
   const [newGoal, setNewGoal] = useState<{ name: string; emoji: string; target: string; deadline: string }>({ name: '', emoji: '🎯', target: '', deadline: '' });
+
+  useEffect(() => {
+    autoAllocate.mutate(undefined, {
+      onSuccess: (data) => {
+        if (data.allocated && data.distributions?.length) {
+          setAllocBanner({ surplus: data.surplus!, count: data.distributions.length });
+        }
+      },
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCreate = async () => {
     if (!newGoal.name || !newGoal.target) return;
@@ -43,6 +56,18 @@ export default function GoalsPage() {
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, fontFamily: 'var(--font-head)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>Your goals 🎯</h2>
         <button className="ss-btn-coral" onClick={() => setShowCreate(true)}>+ New goal</button>
       </div>
+
+      {allocBanner && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 18px', borderRadius: 14, background: '#EAF7F0', border: '1.5px solid #4CAF82' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 20 }}>✨</span>
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: '#2d7a52' }}>
+              Auto-allocated <strong>{formatINR(allocBanner.surplus)}</strong> surplus across {allocBanner.count} goal{allocBanner.count > 1 ? 's' : ''} this month
+            </span>
+          </div>
+          <button onClick={() => setAllocBanner(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#4CAF82', padding: '0 4px', lineHeight: 1 }}>✕</button>
+        </div>
+      )}
 
       {isLoading && <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Loading…</div>}
 

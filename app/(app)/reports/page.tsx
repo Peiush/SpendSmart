@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { useWeeklyReport, useMonthlyReport } from '@/hooks/useReports';
+import { useWeeklyReport, useMonthlyReport, useDailyReport } from '@/hooks/useReports';
 import { Card, ChangeBadge, SectionTitle } from '@/components/ui';
 import { GroupedBars, DayBars, Donut } from '@/components/ui/charts';
 import { formatINR } from '@/lib/utils/format';
@@ -186,18 +186,171 @@ function MonthlyReport() {
   );
 }
 
+function DailyReport() {
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState(today);
+  const { data, isLoading } = useDailyReport(date);
+
+  function shiftDate(days: number) {
+    const d = new Date(date + 'T00:00:00');
+    d.setDate(d.getDate() + days);
+    setDate(d.toISOString().slice(0, 10));
+  }
+
+  const canNext = date < today;
+  const friendlyDate = new Date(date + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  const changePct = data && data.prevDayTotal > 0
+    ? Math.round(((data.total - data.prevDayTotal) / data.prevDayTotal) * 100)
+    : null;
+  const changeDir = changePct === null ? 'flat' : changePct > 0 ? 'up' : changePct < 0 ? 'down' : 'flat';
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+      {/* Date picker + nav */}
+      <Card style={{ padding: 22 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+          <h2 style={{ margin: 0, fontSize: 17, fontFamily: 'var(--font-head)', fontWeight: 700, color: 'var(--text-primary)' }}>Daily breakdown</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button className="ss-nav-arrow" onClick={() => shiftDate(-1)}>‹</button>
+            <input
+              type="date"
+              value={date}
+              max={today}
+              onChange={e => e.target.value && setDate(e.target.value)}
+              style={{
+                border: '1.5px solid var(--border)',
+                borderRadius: 10,
+                padding: '7px 12px',
+                fontSize: 14,
+                fontFamily: 'var(--font-body)',
+                color: 'var(--text-primary)',
+                background: 'var(--card)',
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            />
+            <button className="ss-nav-arrow" onClick={() => shiftDate(1)} disabled={!canNext}>›</button>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 18, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>{friendlyDate}</div>
+            {isLoading ? (
+              <div style={{ fontSize: 30, fontWeight: 800, fontFamily: 'var(--font-head)', color: 'var(--text-primary)' }}>—</div>
+            ) : (
+              <div style={{ fontSize: 32, fontWeight: 800, fontFamily: 'var(--font-head)', color: 'var(--coral)' }}>{formatINR(data?.total ?? 0)}</div>
+            )}
+            {!isLoading && data?.prevDayTotal > 0 && (
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
+                vs {formatINR(data.prevDayTotal)} yesterday
+              </div>
+            )}
+          </div>
+          {changePct !== null && (
+            <ChangeBadge change={Math.abs(changePct)} dir={changeDir} />
+          )}
+        </div>
+      </Card>
+
+      {/* Category summary pills */}
+      {!isLoading && data?.byCategory && data.byCategory.length > 0 && (
+        <div>
+          <SectionTitle>By category</SectionTitle>
+          <div className="ss-hscroll">
+            {data.byCategory.map(cat => (
+              <Card key={cat.name} style={{ padding: 18, minWidth: 170, flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 12, background: cat.tintHex || '#FDF0EC', display: 'grid', placeItems: 'center', fontSize: 20 }}>{cat.icon}</div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, fontFamily: 'var(--font-head)', color: 'var(--text-primary)' }}>{cat.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{cat.count} expense{cat.count !== 1 ? 's' : ''}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'var(--font-head)', color: cat.color || 'var(--coral)' }}>{formatINR(cat.amount)}</div>
+                {data.total > 0 && (
+                  <div style={{ marginTop: 8, height: 4, borderRadius: 4, background: 'var(--border)' }}>
+                    <div style={{ height: '100%', borderRadius: 4, background: cat.color || 'var(--coral)', width: `${Math.min(100, Math.round((cat.amount / data.total) * 100))}%`, transition: 'width 0.4s ease' }} />
+                  </div>
+                )}
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Expense list */}
+      {!isLoading && data && (
+        data.expenses.length === 0 ? (
+          <Card style={{ padding: 48, textAlign: 'center' }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>🗓️</div>
+            <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-head)', color: 'var(--text-primary)', marginBottom: 6 }}>No expenses on this day</div>
+            <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>Try selecting a different date above.</div>
+          </Card>
+        ) : (
+          <div>
+            <SectionTitle>{data.expenses.length} expense{data.expenses.length !== 1 ? 's' : ''}</SectionTitle>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {data.expenses.map(expense => (
+                <Card key={expense.id} style={{ padding: '14px 18px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{
+                      width: 44, height: 44, borderRadius: 13, flexShrink: 0,
+                      background: expense.category.tintHex || '#FDF0EC',
+                      display: 'grid', placeItems: 'center', fontSize: 22,
+                    }}>
+                      {expense.category.icon}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', fontFamily: 'var(--font-head)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {expense.merchant}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{
+                          background: expense.category.tintHex || '#FDF0EC',
+                          color: expense.category.colorHex || 'var(--coral)',
+                          borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 700,
+                        }}>
+                          {expense.category.short}
+                        </span>
+                        <span>{expense.type}</span>
+                        {expense.note && <span style={{ fontStyle: 'italic' }}>{expense.note}</span>}
+                        {expense.tags?.length > 0 && (
+                          <span style={{ color: 'var(--text-muted)' }}>{expense.tags.map(t => `#${t}`).join(' ')}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ fontWeight: 800, fontSize: 17, fontFamily: 'var(--font-head)', color: 'var(--text-primary)', flexShrink: 0 }}>
+                      {formatINR(expense.amount)}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )
+      )}
+
+      {isLoading && (
+        <Card style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</Card>
+      )}
+    </div>
+  );
+}
+
 export default function ReportsPage() {
-  const [tab, setTab] = useState<'weekly' | 'monthly'>('weekly');
+  const [tab, setTab] = useState<'weekly' | 'monthly' | 'daily'>('weekly');
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div className="ss-segment" style={{ alignSelf: 'flex-start' }}>
-        {(['weekly', 'monthly'] as const).map(t => (
+        {(['weekly', 'monthly', 'daily'] as const).map(t => (
           <button key={t} className={'ss-segment__btn ' + (tab === t ? 'is-active' : '')} onClick={() => setTab(t)}>
-            {t === 'weekly' ? 'Weekly' : 'Monthly'}
+            {t === 'weekly' ? 'Weekly' : t === 'monthly' ? 'Monthly' : 'Daily'}
           </button>
         ))}
       </div>
-      {tab === 'weekly' ? <WeeklyReport /> : <MonthlyReport />}
+      {tab === 'weekly' ? <WeeklyReport /> : tab === 'monthly' ? <MonthlyReport /> : <DailyReport />}
     </div>
   );
 }
