@@ -2,6 +2,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { useUIStore } from '@/stores/uiStore';
+import { SplashScreen } from '@/components/ui/SplashScreen';
 
 const FONT_PAIRS: Record<string, { head: string; body: string }> = {
   Outfit:  { head: "'Outfit', sans-serif",           body: "'DM Sans', sans-serif" },
@@ -63,6 +64,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={clientRef.current}>
       <ThemeSync />
+      <SplashScreen />
       {children}
     </QueryClientProvider>
   );

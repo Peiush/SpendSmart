@@ -3,8 +3,9 @@ import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'SpendSmart — Money Management',
-  description: 'Personal money management portal',
+  title: 'Rupeefy',
+  description: 'Personal money management — track expenses, budgets & goals',
+  manifest: '/manifest.json',
   icons: {
     icon: '/icon.png',
     apple: '/icon.png',
