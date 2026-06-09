@@ -15,11 +15,16 @@ export async function GET(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { monthlyBudget: true, preferences: true },
+    select: { monthlyBudget: true, preferences: true, createdAt: true },
   });
   const prefs = (user?.preferences as Record<string, unknown>) ?? {};
 
   if (prefs.lastAutoAllocateMonth === processMonth) {
+    return NextResponse.json({ pending: false });
+  }
+
+  // Don't show a surplus for months that ended before the account existed
+  if (user?.createdAt && user.createdAt > monthEnd) {
     return NextResponse.json({ pending: false });
   }
 
@@ -59,7 +64,7 @@ export async function POST(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { monthlyBudget: true, preferences: true },
+    select: { monthlyBudget: true, preferences: true, createdAt: true },
   });
 
   const prefs = (user?.preferences as Record<string, unknown>) ?? {};
@@ -67,6 +72,11 @@ export async function POST(req: NextRequest) {
   // Skip if we already processed last month's surplus
   if (prefs.lastAutoAllocateMonth === processMonth) {
     return NextResponse.json({ skipped: true, reason: 'already_run_this_month' });
+  }
+
+  // Don't allocate surplus for months that ended before the account existed
+  if (user?.createdAt && user.createdAt > monthEnd) {
+    return NextResponse.json({ skipped: true, reason: 'account_not_yet_created' });
   }
 
   // Resolve global budget amount

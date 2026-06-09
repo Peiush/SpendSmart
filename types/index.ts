@@ -106,10 +106,18 @@ export interface DashboardSummary {
     savings: { pct: number; amount: number; target: number };
   };
   insight: {
-    topCategory: string;
-    biggestChange: string;
-    suggestion: string;
+    topCategory: string | null;
+    biggestChange: string | null;
+    suggestion: string | null;
   };
+  streak: number;
+  upcomingRecurring: Array<{
+    id: string;
+    merchant: string;
+    amount: number;
+    nextDueDate: string;
+    category: { name: string; icon: string; colorHex: string };
+  }>;
 }
 
 export interface WeeklyReport {

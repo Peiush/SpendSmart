@@ -40,12 +40,23 @@ export async function GET(req: NextRequest) {
 
   const { thisMonday, thisSunday, lastMonday, lastSunday } = getWeekBounds(now);
 
+  // Date ranges for streak (30 days) and upcoming bills (7 days)
+  const thirtyDaysAgo = new Date(todayStart.getTime() - 29 * 86400000);
+  const sevenDaysLater = new Date(todayStart.getTime() + 7 * 86400000);
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { monthlyBudget: true, dailyLimit: true },
+    select: { monthlyBudget: true, dailyLimit: true, createdAt: true },
   });
 
-  const [[monthlyAgg, todayAgg, weekAgg], needsWantsAgg, thisWeekBycat, lastWeekBycat] = await Promise.all([
+  const [
+    [monthlyAgg, todayAgg, weekAgg],
+    needsWantsAgg,
+    thisWeekBycat,
+    lastWeekBycat,
+    streakDailyTotals,
+    upcomingRules,
+  ] = await Promise.all([
     prisma.$transaction([
       prisma.expense.aggregate({
         where: { userId, date: { gte: monthStart, lte: monthEnd } },
@@ -75,6 +86,17 @@ export async function GET(req: NextRequest) {
       where: { userId, date: { gte: lastMonday, lte: lastSunday } },
       _sum: { amount: true },
     }),
+    prisma.expense.groupBy({
+      by: ['date'],
+      where: { userId, date: { gte: thirtyDaysAgo, lte: todayEnd } },
+      _sum: { amount: true },
+    }),
+    prisma.recurringRule.findMany({
+      where: { userId, isActive: true, nextDueDate: { gte: todayStart, lte: sevenDaysLater } },
+      include: { category: { select: { name: true, icon: true, colorHex: true } } },
+      orderBy: { nextDueDate: 'asc' },
+      take: 5,
+    }),
   ]);
 
   const monthlyBudget = Number(user?.monthlyBudget ?? 0);
@@ -95,6 +117,43 @@ export async function GET(req: NextRequest) {
   const savings = nwMap['Savings'] ?? 0;
   const total = needs + wants + savings || 1;
   const pct = (v: number) => Math.round((v / total) * 100);
+
+  // Streak: consecutive days under daily limit, bounded by account creation date
+  let streak = 0;
+  if (dailyLimit > 0 && user?.createdAt) {
+    // Normalise createdAt to UTC midnight so date comparisons work cleanly
+    const ca = user.createdAt;
+    const accountStart = new Date(
+      `${ca.getFullYear()}-${pad(ca.getMonth() + 1)}-${pad(ca.getDate())}`
+    );
+
+    const streakMap: Record<string, number> = {};
+    for (const d of streakDailyTotals) {
+      const key = new Date(d.date).toISOString().slice(0, 10);
+      streakMap[key] = Number(d._sum.amount ?? 0);
+    }
+
+    for (let i = 0; i < 30; i++) {
+      const dayDate = new Date(todayStart.getTime() - i * 86400000);
+      // Stop counting before the account existed
+      if (dayDate < accountStart) break;
+      const dayKey = dayDate.toISOString().slice(0, 10);
+      if ((streakMap[dayKey] ?? 0) <= dailyLimit) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  // Upcoming recurring expenses (next 7 days)
+  const upcomingRecurring = upcomingRules.map(r => ({
+    id: r.id,
+    merchant: r.merchant,
+    amount: Number(r.amount),
+    nextDueDate: new Date(r.nextDueDate).toISOString().slice(0, 10),
+    category: { name: r.category.name, icon: r.category.icon, colorHex: r.category.colorHex },
+  }));
 
   // Build dynamic insight from this week vs last week by category
   const insight = await (async () => {
@@ -164,5 +223,7 @@ export async function GET(req: NextRequest) {
       savings: { pct: pct(savings), amount: savings, target: 20 },
     },
     insight,
+    streak,
+    upcomingRecurring,
   });
 }

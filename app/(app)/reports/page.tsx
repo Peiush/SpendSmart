@@ -3,12 +3,12 @@ import { useState } from 'react';
 import { useWeeklyReport, useMonthlyReport, useDailyReport } from '@/hooks/useReports';
 import { Card, ChangeBadge, SectionTitle } from '@/components/ui';
 import { GroupedBars, DayBars, Donut } from '@/components/ui/charts';
-import { formatINR } from '@/lib/utils/format';
+import { formatINR, localDateStr } from '@/lib/utils/format';
 
 function getWeekKey(offset: number) {
   const d = new Date();
   d.setDate(d.getDate() - offset * 7);
-  return d.toISOString().slice(0, 10);
+  return localDateStr(d);
 }
 function getWeekLabel(offset: number) {
   const end = new Date();
@@ -20,7 +20,7 @@ function getWeekLabel(offset: number) {
 function getMonthKey(offset: number) {
   const d = new Date();
   d.setMonth(d.getMonth() - offset);
-  return d.toISOString().slice(0, 7);
+  return localDateStr(d).slice(0, 7);
 }
 function getMonthLabel(offset: number) {
   const d = new Date();
@@ -187,14 +187,14 @@ function MonthlyReport() {
 }
 
 function DailyReport() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr();
   const [date, setDate] = useState(today);
   const { data, isLoading } = useDailyReport(date);
 
   function shiftDate(days: number) {
     const d = new Date(date + 'T00:00:00');
     d.setDate(d.getDate() + days);
-    setDate(d.toISOString().slice(0, 10));
+    setDate(localDateStr(d));
   }
 
   const canNext = date < today;

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDashboardSummary } from '@/hooks/useDashboard';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useBudgets } from '@/hooks/useBudgets';
@@ -7,10 +7,11 @@ import { Card, Ring, ProgressBar, SectionTitle, IconDisc, CategoryChip } from '@
 import { Sparkline } from '@/components/ui/charts';
 import { useCountUp } from '@/hooks/useCountUp';
 import { useCatBy } from '@/hooks/useCategories';
-import { formatINR, relDate } from '@/lib/utils/format';
+import { formatINR, relDate, localDateStr } from '@/lib/utils/format';
 import { budgetStatus } from '@/lib/utils/budget';
 import { useWeeklyReport } from '@/hooks/useReports';
 import { useProcessRecurring } from '@/hooks/useRecurring';
+import { useUser } from '@/hooks/useUser';
 import { useRouter } from 'next/navigation';
 
 function Money({ value, style }: { value: number; style?: React.CSSProperties }) {
@@ -18,19 +19,77 @@ function Money({ value, style }: { value: number; style?: React.CSSProperties })
   return <span style={style}>{formatINR(v)}</span>;
 }
 
+function getDueLabel(dateStr: string): { label: string; cls: string } {
+  const now = new Date();
+  const tom = new Date(now); tom.setDate(now.getDate() + 1);
+  if (dateStr === localDateStr(now)) return { label: 'Today', cls: 'ss-bill-chip__due--today' };
+  if (dateStr === localDateStr(tom)) return { label: 'Tomorrow', cls: 'ss-bill-chip__due--soon' };
+  return {
+    label: new Date(dateStr + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }),
+    cls: '',
+  };
+}
+
+function getHeroGreeting(
+  name: string,
+  streak: number,
+  paceAhead: number,
+  todaySpend: number,
+  dailyLimit: number,
+  spent: number,
+): { headline: string; sub: string } {
+  const now    = new Date();
+  const h      = now.getHours();
+  const day    = now.getDay();
+  const date   = now.getDate();
+  const month  = now.toLocaleString('en-IN', { month: 'long' });
+  const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - date;
+  const first  = name.split(' ')[0];
+  const dateStr = now.toLocaleString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const isMorning   = h >= 5  && h < 12;
+  const isAfternoon = h >= 12 && h < 17;
+  const isEvening   = h >= 17 && h < 21;
+  const timeWord    = isMorning ? 'Morning' : isAfternoon ? 'Afternoon' : h >= 21 ? 'Late night' : 'Evening';
+  const timeEmoji   = isMorning ? '☀️' : isAfternoon ? '⚡' : h >= 21 ? '🦉' : '🌙';
+
+  if (date === 1)
+    return { headline: `Fresh start, ${first} ✨`, sub: `${month} budget just unlocked.` };
+  if (daysLeft <= 3 && spent > 0)
+    return { headline: `Final stretch, ${first} 🏁`, sub: `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left in ${month}.` };
+  if (streak >= 10)
+    return { headline: `${streak} days clean 🔥`, sub: `${first}, that streak is something special.` };
+  if (streak >= 5)
+    return { headline: `${streak}-day streak, ${first} 🔥`, sub: 'Consistency is paying off.' };
+  if (day === 1 && isMorning)
+    return { headline: `Monday reset, ${first} 🚀`, sub: 'New week, clean slate.' };
+  if ((day === 0 || day === 6) && !isMorning)
+    return { headline: `Weekend mode, ${first} 🎉`, sub: 'Tracking through the fun.' };
+  if (paceAhead > 20)
+    return { headline: `Watch the pace, ${first} ⚡`, sub: `${paceAhead}% ahead of budget pace — adjust today.` };
+  if (paceAhead <= 0 && spent > 0)
+    return { headline: `On track, ${first} ✅`, sub: 'Budget pace is looking healthy.' };
+  if (isEvening && dailyLimit > 0 && todaySpend < dailyLimit)
+    return { headline: `Solid day, ${first} 💪`, sub: 'Under the daily limit — keep it up.' };
+  return { headline: `${timeWord}, ${first} ${timeEmoji}`, sub: dateStr };
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const processRecurring = useProcessRecurring();
+  const [alertDismissed, setAlertDismissed] = useState(false);
 
   useEffect(() => {
     processRecurring.mutate();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const { data: user } = useUser();
   const { data: summary } = useDashboardSummary();
   const { data: expensesData } = useExpenses({ limit: 5 });
   const { data: budgets = [] } = useBudgets();
   const catBy = useCatBy();
-  const { data: weekly } = useWeeklyReport(new Date().toISOString().slice(0, 10));
+  const { data: weekly } = useWeeklyReport(localDateStr());
 
   const spent = summary?.spent ?? 0;
   const monthlyBudget = summary?.monthlyBudget ?? 0;
@@ -43,13 +102,51 @@ export default function DashboardPage() {
   const forecast = summary?.forecast ?? 0;
   const split = summary?.split;
   const insight = summary?.insight;
+  const streak = summary?.streak ?? 0;
+  const upcomingRecurring = summary?.upcomingRecurring ?? [];
   const expenses = expensesData?.expenses ?? [];
   const forecastOver = forecast - monthlyBudget;
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 26 }}>
+  // Budget pace
+  const now = new Date();
+  const daysElapsed = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const timePct = Math.round((daysElapsed / daysInMonth) * 100);
+  const paceAhead = usedPct - timePct;
 
-      {/* Weekly insight digest */}
+  const { headline, sub } = getHeroGreeting(
+    user?.name ?? 'there',
+    streak,
+    paceAhead,
+    todaySpend,
+    dailyLimit,
+    spent,
+  );
+
+  // Budget alert: any category budget >= 90%
+  const overBudgets = budgets.filter(
+    b => b.categoryId && b.amount > 0 && Math.round((b.spent / b.amount) * 100) >= 90
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+
+      {/* ── Budget overshoot alert banner ── */}
+      {!alertDismissed && overBudgets.length > 0 && (
+        <div className="ss-alert-banner">
+          <span style={{ fontSize: 16 }}>⚠️</span>
+          <span className="ss-alert-banner__text">
+            {overBudgets.length === 1
+              ? `${catBy[overBudgets[0].category?.name ?? '']?.short ?? overBudgets[0].category?.name} is at ${Math.round((overBudgets[0].spent / overBudgets[0].amount) * 100)}% of its budget`
+              : `${overBudgets.length} budgets are near or over their limit`
+            }
+          </span>
+          <button className="ss-alert-banner__review" onClick={() => router.push('/budgets')}>Review →</button>
+          <button className="ss-alert-banner__dismiss" onClick={() => setAlertDismissed(true)} aria-label="Dismiss">×</button>
+        </div>
+      )}
+
+      {/* ── Weekly insight digest ── */}
       {insight?.topCategory && (
         <div className="ss-insight-digest">
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
@@ -68,14 +165,15 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Hero card */}
+      {/* ── Hero card ── */}
       <div className="ss-hero">
         <div className="ss-hero__bloom" />
         <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
           <div>
-            <div style={{ fontSize: 15, color: 'rgba(255,255,255,.62)', fontWeight: 500 }}>Good morning 👋</div>
-            <div style={{ fontSize: 14, color: 'rgba(255,255,255,.45)', marginTop: 4 }}>
-              {new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' })} · <Money value={spent} /> spent so far
+            <div className="ss-hero-greeting">{headline}</div>
+            <div className="ss-hero-greeting__sub">{sub}</div>
+            <div style={{ fontSize: 13.5, color: 'rgba(255,255,255,.38)', marginTop: 10 }}>
+              {now.toLocaleString('en-IN', { month: 'long', year: 'numeric' })} · <Money value={spent} /> spent so far
             </div>
             <div style={{ marginTop: 22 }}>
               <div style={{ fontSize: 13, color: 'rgba(255,255,255,.5)', fontWeight: 500 }}>Remaining this month</div>
@@ -85,7 +183,23 @@ export default function DashboardPage() {
               </div>
               <div style={{ fontSize: 13, color: 'rgba(255,255,255,.4)', marginTop: 4 }}>of {formatINR(monthlyBudget)} budget</div>
             </div>
+
+            {/* Streak + Budget pace badges */}
+            <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+              {streak > 0 && dailyLimit > 0 && (
+                <span className="ss-hero-badge ss-hero-badge--fire">
+                  🔥 {streak} day streak
+                </span>
+              )}
+              {monthlyBudget > 0 && spent > 0 && (
+                <span className={`ss-hero-badge ${paceAhead > 15 ? 'ss-hero-badge--warn' : paceAhead > 5 ? 'ss-hero-badge--amber' : 'ss-hero-badge--ok'}`}>
+                  {paceAhead > 15 ? '📈' : paceAhead > 5 ? '📊' : '✓'}{' '}
+                  Day {daysElapsed} · {paceAhead > 5 ? `${paceAhead}% ahead of pace` : 'On pace'}
+                </span>
+              )}
+            </div>
           </div>
+
           <Ring pct={usedPct} size={108} stroke={11}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 26, fontWeight: 800, color: '#fff', fontFamily: 'var(--font-head)' }}>{usedPct}%</div>
@@ -95,7 +209,35 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Stat cards + Forecast — 3 columns on wide desktop */}
+      {/* ── Upcoming bills strip ── */}
+      {upcomingRecurring.length > 0 && (
+        <div>
+          <SectionTitle action={<span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Next 7 days</span>}>Due soon</SectionTitle>
+          <div className="ss-hscroll" style={{ paddingBottom: 4 }}>
+            {upcomingRecurring.map(r => {
+              const { label, cls } = getDueLabel(r.nextDueDate);
+              return (
+                <div key={r.id} className="ss-bill-chip">
+                  <div
+                    className="ss-bill-chip__icon"
+                    style={{ background: r.category.colorHex + '22', border: `1px solid ${r.category.colorHex}33` }}
+                  >
+                    {r.category.icon}
+                  </div>
+                  <div>
+                    <div className="ss-bill-chip__name">{r.merchant}</div>
+                    <div className="ss-bill-chip__meta">
+                      {formatINR(r.amount)} · <span className={cls}>{label}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Stat cards + Forecast — 3 columns on wide desktop ── */}
       <div className="ss-stats-3">
         <Card hover style={{ padding: 20 }}>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>Today&apos;s Spend</div>
@@ -139,7 +281,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Forecast — standalone at tablet/mobile (<1200px) */}
+      {/* ── Forecast — standalone at tablet/mobile (<1200px) ── */}
       <Card className="ss-forecast-standalone" style={{ padding: 20, background: forecastOver > 0 ? '#FFF6E5' : '#EAF7F0', border: `1px solid ${forecastOver > 0 ? '#F6E3BC' : '#B8E8D0'}` }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ width: 38, height: 38, borderRadius: 11, background: forecastOver > 0 ? 'rgba(245,166,35,.18)' : 'rgba(76,175,130,.18)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
@@ -160,7 +302,7 @@ export default function DashboardPage() {
         </div>
       </Card>
 
-      {/* 50/30/20 split */}
+      {/* ── 50/30/20 split ── */}
       {split && (
         <Card style={{ padding: 20 }}>
           <SectionTitle action={<span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>50/30/20 rule</span>}>Spending split</SectionTitle>
@@ -186,7 +328,7 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Budget status */}
+      {/* ── Budget status ── */}
       {budgets.length > 0 && (
         <div>
           <SectionTitle action={<button className="ss-link" onClick={() => router.push('/budgets')}>View all</button>}>Budget status</SectionTitle>
@@ -215,7 +357,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Recent expenses */}
+      {/* ── Recent expenses + Smart insight ── */}
       <div className="ss-grid-recent">
         <div>
           <SectionTitle action={<button className="ss-link" onClick={() => router.push('/expenses')}>See all</button>}>Recent expenses</SectionTitle>

@@ -8,9 +8,20 @@ export function formatINR(n: number, { decimals = false } = {}): string {
   });
 }
 
+/** Returns YYYY-MM-DD in the browser's local timezone (not UTC). */
+export function localDateStr(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export function relDate(iso: string): string {
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const now = new Date();
+  const today = localDateStr(now);
+  const yest = new Date(now);
+  yest.setDate(now.getDate() - 1);
+  const yesterday = localDateStr(yest);
   if (iso === today) return 'Today';
   if (iso === yesterday) return 'Yesterday';
   const d = new Date(iso + 'T00:00:00');
