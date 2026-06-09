@@ -30,6 +30,20 @@ function getDueLabel(dateStr: string): { label: string; cls: string } {
   };
 }
 
+const OnTrackIcon = () => (
+  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', verticalAlign: 'middle', marginLeft: 6 }}>
+    <circle cx="14" cy="14" r="13" stroke="url(#ontrack-grad)" strokeWidth="1.5" fill="none" opacity="0.25"/>
+    <circle cx="14" cy="14" r="13" stroke="url(#ontrack-grad)" strokeWidth="1.5" fill="none" strokeDasharray="82" strokeDashoffset="0"/>
+    <polyline points="9,14 12.5,17.5 19,10.5" stroke="url(#ontrack-grad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    <defs>
+      <linearGradient id="ontrack-grad" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#34d399"/>
+        <stop offset="100%" stopColor="#059669"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
 function getHeroGreeting(
   name: string,
   streak: number,
@@ -37,7 +51,7 @@ function getHeroGreeting(
   todaySpend: number,
   dailyLimit: number,
   spent: number,
-): { text: string; emoji: string; sub: string } {
+): { text: string; emoji: React.ReactNode; sub: string } {
   const now    = new Date();
   const h      = now.getHours();
   const day    = now.getDay();
@@ -68,7 +82,7 @@ function getHeroGreeting(
   if (paceAhead > 20)
     return { text: `Watch the pace, ${first}`, emoji: '⚡', sub: `${paceAhead}% ahead of budget pace — adjust today.` };
   if (paceAhead <= 0 && spent > 0)
-    return { text: `On track, ${first}`, emoji: '✅', sub: 'Budget pace is looking healthy.' };
+    return { text: `On track, ${first}`, emoji: <OnTrackIcon />, sub: 'Budget pace is looking healthy.' };
   if (isEvening && dailyLimit > 0 && todaySpend < dailyLimit)
     return { text: `Solid day, ${first}`, emoji: '💪', sub: 'Under the daily limit — keep it up.' };
   return { text: `${timeWord}, ${first}`, emoji: timeEmoji, sub: dateStr };

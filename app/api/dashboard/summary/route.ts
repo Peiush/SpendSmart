@@ -138,7 +138,9 @@ export async function GET(req: NextRequest) {
       // Stop counting before the account existed
       if (dayDate < accountStart) break;
       const dayKey = dayDate.toISOString().slice(0, 10);
-      if ((streakMap[dayKey] ?? 0) <= dailyLimit) {
+      // Days with no expenses logged don't count toward the streak
+      if (!(dayKey in streakMap)) break;
+      if (streakMap[dayKey] <= dailyLimit) {
         streak++;
       } else {
         break;
