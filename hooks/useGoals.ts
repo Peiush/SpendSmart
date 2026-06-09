@@ -83,7 +83,11 @@ export interface StreakData {
 export function useStreak() {
   return useQuery({
     queryKey: [...queryKeys.goals.all, 'streak'],
-    queryFn: () => apiGet<StreakData>('/api/goals/streak'),
+    queryFn: () => {
+      const now = new Date();
+      const localDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+      return apiGet<StreakData>(`/api/goals/streak?date=${localDate}`);
+    },
     staleTime: 60_000,
   });
 }

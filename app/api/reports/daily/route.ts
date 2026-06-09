@@ -6,7 +6,8 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const dateParam = searchParams.get('date'); // YYYY-MM-DD
 
-  const dateStr = dateParam ?? new Date().toISOString().slice(0, 10);
+  if (!dateParam) return NextResponse.json({ error: 'date param required' }, { status: 400 });
+  const dateStr = dateParam;
   const [y, m, d] = dateStr.split('-').map(Number);
 
   const start = new Date(y, m - 1, d, 0, 0, 0);

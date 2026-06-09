@@ -4,6 +4,7 @@ import { Toggle } from '@/components/ui';
 import { useCategories } from '@/hooks/useCategories';
 import { useCreateExpense } from '@/hooks/useExpenses';
 import { useCreateRecurringRule } from '@/hooks/useRecurring';
+import { localDateStr } from '@/lib/utils/format';
 import type { ExpenseType, RecurFreq } from '@/types';
 
 const FREQ_OPTIONS: { value: RecurFreq; label: string; icon: string }[] = [
@@ -49,7 +50,7 @@ export function AddExpenseModal({ open, onClose }: { open: boolean; onClose: () 
 
   const save = async () => {
     if (!amount || !catId) return;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateStr();
 
     if (recurring) {
       await createRecurring.mutateAsync({
