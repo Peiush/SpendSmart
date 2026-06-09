@@ -50,7 +50,7 @@ export default function DashboardPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 26 }}>
 
       {/* Weekly insight digest */}
-      {insight && (
+      {insight?.topCategory && (
         <div className="ss-insight-digest">
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
             <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(232,115,90,.18)', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 2 }}>
