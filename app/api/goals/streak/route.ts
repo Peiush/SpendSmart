@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   today.setHours(0, 0, 0, 0);
 
   // Start from today; if today has no activity start from yesterday
-  let cursor = new Date(today);
+  const cursor = new Date(today);
   const todayStr = cursor.toISOString().slice(0, 10);
   if (!savingsDays.has(todayStr)) {
     cursor.setDate(cursor.getDate() - 1);
