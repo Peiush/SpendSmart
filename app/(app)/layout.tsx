@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { NavIcon } from '@/components/layout/NavIcon';
@@ -9,15 +9,20 @@ import { useUser } from '@/hooks/useUser';
 import { AddExpenseModal } from '@/components/modals/AddExpenseModal';
 import { EditExpenseModal } from '@/components/modals/EditExpenseModal';
 
-const NAV = [
-  { key: 'dashboard', label: 'Home',      icon: 'home',    href: '/dashboard' },
-  { key: 'expenses',  label: 'Expenses',  icon: 'list',    href: '/expenses' },
-  { key: 'recurring', label: 'Recurring', icon: 'refresh', href: '/recurring' },
+const PRIMARY_NAV = [
+  { key: 'dashboard', label: 'Home',     icon: 'home',    href: '/dashboard' },
+  { key: 'expenses',  label: 'Expenses', icon: 'list',    href: '/expenses' },
+  { key: 'budgets',   label: 'Budgets',  icon: 'wallet',  href: '/budgets' },
+  { key: 'goals',     label: 'Goals',    icon: 'target',  href: '/goals' },
+];
+
+const MORE_NAV = [
   { key: 'reports',   label: 'Reports',   icon: 'chart',   href: '/reports' },
-  { key: 'budgets',   label: 'Budgets',   icon: 'wallet',  href: '/budgets' },
-  { key: 'goals',     label: 'Goals',     icon: 'target',  href: '/goals' },
+  { key: 'recurring', label: 'Recurring', icon: 'refresh', href: '/recurring' },
   { key: 'settings',  label: 'Settings',  icon: 'gear',    href: '/settings' },
 ];
+
+const NAV = [...PRIMARY_NAV, ...MORE_NAV];
 
 const TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard', '/expenses': 'Expenses', '/recurring': 'Recurring',
@@ -52,6 +57,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const clearAuth = useAuthStore(s => s.clearAuth);
   const { data: user } = useUser();
   const [modal, setModal] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreActive = MORE_NAV.some(n => n.href === pathname);
+
+  useEffect(() => { setMoreOpen(false); }, [pathname]);
 
   const showFab = pathname === '/dashboard' || pathname === '/expenses';
   const title = TITLES[pathname] ?? 'SpendSmart';
@@ -103,6 +112,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <button className="ss-icon-btn" title={darkMode ? 'Light mode' : 'Dark mode'} onClick={toggleDark} aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}>
               {darkMode ? <SunIcon /> : <MoonIcon />}
             </button>
+            <Link href="/settings" title="Profile & Settings" aria-label="Profile & Settings"
+              style={{ width: 34, height: 34, borderRadius: '50%', background: pathname === '/settings' ? 'var(--coral)' : 'var(--coral)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontFamily: 'var(--font-head)', fontSize: 12, textDecoration: 'none', flexShrink: 0, boxShadow: '0 2px 8px rgba(232,115,90,.35)', opacity: pathname === '/settings' ? 1 : 0.85 }}>
+              {initials}
+            </Link>
             <button className="ss-btn-coral ss-add-top" onClick={() => setModal(true)}>+ Add expense</button>
           </div>
         </header>
@@ -118,13 +131,37 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Bottom nav — mobile */}
       <nav className="ss-bottomnav">
-        {NAV.slice(0, 5).map(n => (
+        {PRIMARY_NAV.map(n => (
           <Link key={n.key} href={n.href} className={'ss-bn__item ' + (pathname === n.href ? 'is-active' : '')}>
             <NavIcon name={n.icon} active={pathname === n.href} />
             <span>{n.label}</span>
           </Link>
         ))}
+        <button className={'ss-bn__item ' + (moreOpen || moreActive ? 'is-active' : '')} onClick={() => setMoreOpen(o => !o)}>
+          <NavIcon name="grid" active={moreOpen || moreActive} />
+          <span>More</span>
+        </button>
       </nav>
+
+      {/* More sheet — mobile */}
+      {moreOpen && (
+        <div className="ss-more-backdrop" onClick={() => setMoreOpen(false)}>
+          <div className="ss-more-sheet" onClick={e => e.stopPropagation()}>
+            <div className="ss-more-handle" />
+            <div className="ss-more-grid">
+              {MORE_NAV.map(n => (
+                <Link key={n.key} href={n.href} className={'ss-more-item ' + (pathname === n.href ? 'is-active' : '')}
+                  onClick={() => setMoreOpen(false)}>
+                  <div className="ss-more-icon">
+                    <NavIcon name={n.icon} active={pathname === n.href} />
+                  </div>
+                  <span>{n.label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <AddExpenseModal open={modal} onClose={() => setModal(false)} />
       <EditExpenseModal expense={editingExpense} onClose={closeEditExpense} />

@@ -1,8 +1,11 @@
 'use client';
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
 import { useUser, useUpdateUser, useDeleteUser } from '@/hooks/useUser';
 import { useCategories } from '@/hooks/useCategories';
 import { useUIStore } from '@/stores/uiStore';
+import { useAuthStore } from '@/stores/authStore';
 import { Card, CategoryChip, Toggle } from '@/components/ui';
 
 const BellIcon = () => (
@@ -69,17 +72,45 @@ function SettingRow({ label, sub, children, last }: { label: string; sub?: strin
   );
 }
 
+const LogoutIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+    <polyline points="16 17 21 12 16 7"/>
+    <line x1="21" y1="12" x2="9" y2="12"/>
+  </svg>
+);
+
 export default function SettingsPage() {
+  const router = useRouter();
   const { data: user } = useUser();
   const { data: categories = [] } = useCategories();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
   const { darkMode, toggleDark } = useUIStore();
+  const clearAuth = useAuthStore(s => s.clearAuth);
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    clearAuth();
+    router.push('/login');
+  };
 
   const [notif, setNotif] = useState({ a: true, b: true, c: false, d: true });
   const [currency, setCurrency] = useState(user?.currency ?? 'INR');
   const [importStatus, setImportStatus] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
+  const openEdit = () => { setEditName(user?.name ?? ''); setEditOpen(true); };
+  const closeEdit = () => setEditOpen(false);
+  const saveEdit = async () => {
+    if (!editName.trim()) return;
+    setEditSaving(true);
+    try { await updateUser.mutateAsync({ name: editName.trim() }); closeEdit(); }
+    finally { setEditSaving(false); }
+  };
 
   const handleCurrencyChange = async (c: string) => {
     setCurrency(c);
@@ -101,34 +132,46 @@ export default function SettingsPage() {
   const initials = user?.name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() ?? '?';
 
   return (
+    <>
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
       {/* Profile card — full width */}
-      <Card style={{ padding: '26px 28px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+      <Card style={{ padding: '26px 28px', position: 'relative' }}>
+        {/* Edit icon — top-right corner */}
+        <button
+          className="ss-icon-btn"
+          onClick={openEdit}
+          title="Edit profile"
+          style={{ position: 'absolute', top: 16, right: 16, width: 34, height: 34, borderRadius: 10 }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+          {/* Avatar */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <div style={{ width: 68, height: 68, borderRadius: '50%', background: 'var(--coral)', display: 'grid', placeItems: 'center', color: '#fff', fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-head)', boxShadow: '0 4px 14px rgba(232,115,90,.35)' }}>
               {initials}
             </div>
             <div style={{ position: 'absolute', bottom: 1, right: 1, width: 18, height: 18, borderRadius: '50%', background: '#4CAF82', border: '2px solid var(--card-bg)' }} />
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 20, fontFamily: 'var(--font-head)', color: 'var(--text-primary)' }}>{user?.name ?? '…'}</div>
-            <div style={{ fontSize: 13.5, color: 'var(--text-muted)', marginTop: 3 }}>{user?.email}</div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: '#4CAF82', background: '#EAF7F0', padding: '3px 10px', borderRadius: 999 }}>
+          {/* Info */}
+          <div style={{ flex: 1, minWidth: 0, paddingRight: 28 }}>
+            <div style={{ fontWeight: 800, fontSize: 20, fontFamily: 'var(--font-head)', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name ?? '…'}</div>
+            <div style={{ fontSize: 13.5, color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: '#4CAF82', background: '#EAF7F0', padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap' }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Active account
               </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', background: 'var(--bg)', padding: '3px 10px', borderRadius: 999 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', background: 'var(--bg)', padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap' }}>
                 {currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£'} {currency}
               </span>
             </div>
           </div>
-          <button className="ss-btn-outline ss-btn-sm" style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            Edit profile
-          </button>
         </div>
       </Card>
 
@@ -238,6 +281,24 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Logout */}
+      <Card style={{ padding: '18px 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--text-primary)', fontFamily: 'var(--font-head)' }}>Sign out</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 3 }}>You will be returned to the login screen.</div>
+          </div>
+          <button
+            onClick={handleLogout}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text-primary)', fontWeight: 600, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'var(--font-head)', transition: 'background .15s' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'var(--card-bg)')}
+          >
+            <LogoutIcon /> Sign out
+          </button>
+        </div>
+      </Card>
+
       {/* Danger zone */}
       <Card style={{ padding: '20px 24px', border: '1px solid #F3C0C0', background: '#FFFAFA' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
@@ -264,5 +325,42 @@ export default function SettingsPage() {
       </Card>
 
     </div>
+
+    {editOpen && createPortal(
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', display: 'grid', placeItems: 'center', zIndex: 9999 }} onClick={closeEdit}>
+        <div style={{ background: 'var(--card-bg)', borderRadius: 20, padding: '32px 28px', width: 'calc(100% - 48px)', maxWidth: 400, boxShadow: '0 20px 60px rgba(0,0,0,.18)', display: 'flex', flexDirection: 'column', gap: 20 }} onClick={e => e.stopPropagation()}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontWeight: 800, fontSize: 18, fontFamily: 'var(--font-head)', color: 'var(--text-primary)' }}>Edit profile</div>
+            <button onClick={closeEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4, display: 'grid', placeItems: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>Full name</label>
+            <input
+              className="ss-input"
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && saveEdit()}
+              placeholder="Your name"
+              autoFocus
+              style={{ fontSize: 15 }}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>Email</label>
+            <input className="ss-input" value={user?.email ?? ''} disabled style={{ fontSize: 15, opacity: .6, cursor: 'not-allowed' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button className="ss-btn-outline ss-btn-sm" onClick={closeEdit}>Cancel</button>
+            <button className="ss-btn-coral ss-btn-sm" onClick={saveEdit} disabled={editSaving || !editName.trim()} style={{ minWidth: 90 }}>
+              {editSaving ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
+    </>
   );
 }

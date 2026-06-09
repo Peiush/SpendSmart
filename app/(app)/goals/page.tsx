@@ -1,14 +1,28 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useGoals, useCreateGoal, useUpdateGoal, useAddFunds, useAutoAllocate } from '@/hooks/useGoals';
+import { useGoals, useCreateGoal, useUpdateGoal, useAddFunds, useCheckAutoAllocate, useConfirmAutoAllocate, useStreak } from '@/hooks/useGoals';
 import { Card, ProgressBar, Toggle } from '@/components/ui';
 import { formatINR } from '@/lib/utils/format';
 import { useMounted } from '@/hooks/useMounted';
 import type { CreateGoalInput } from '@/types';
 
-const STREAK_WEEK = [true, true, true, true, true, false, false];
 const EMOJI_OPTIONS = ['✈️','🏦','💻','🏠','🚗','💍','📱','🎓','🏋️','🎯','🌴','💰'];
+
+function streakLabel(n: number) {
+  if (n === 0) return 'No streak yet';
+  if (n === 1) return '1-day saving streak!';
+  return `${n}-day saving streak!`;
+}
+
+function streakMotivation(n: number) {
+  if (n === 0) return 'Log a savings expense today to start your streak.';
+  if (n < 3) return 'Great start — keep it up!';
+  if (n < 7) return 'You\'re building momentum. Don\'t break the chain!';
+  if (n < 14) return 'Impressive! A week+ of consistent saving.';
+  if (n < 30) return 'Keep going — you\'re building a great habit.';
+  return 'Outstanding! You\'re a saving machine. 🏆';
+}
 
 export default function GoalsPage() {
   const mounted = useMounted();
@@ -17,23 +31,20 @@ export default function GoalsPage() {
   const updateGoal = useUpdateGoal();
   const addFundsMutation = useAddFunds();
 
-  const autoAllocate = useAutoAllocate();
-  const [allocBanner, setAllocBanner] = useState<{ surplus: number; count: number } | null>(null);
+  const { data: streakData } = useStreak();
+  const { data: allocCheck } = useCheckAutoAllocate();
+  const confirmAlloc = useConfirmAutoAllocate();
+  const [allocDone, setAllocDone] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [addFundsGoal, setAddFundsGoal] = useState<typeof goals[0] | null>(null);
   const [fundsAmount, setFundsAmount] = useState('');
   const [newGoal, setNewGoal] = useState<{ name: string; emoji: string; target: string; deadline: string }>({ name: '', emoji: '🎯', target: '', deadline: '' });
 
-  useEffect(() => {
-    autoAllocate.mutate(undefined, {
-      onSuccess: (data) => {
-        if (data.allocated && data.distributions?.length) {
-          setAllocBanner({ surplus: data.surplus!, count: data.distributions.length });
-        }
-      },
+  const handleConfirmAlloc = () => {
+    confirmAlloc.mutate(undefined, {
+      onSuccess: () => setAllocDone(true),
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  };
 
   const handleCreate = async () => {
     if (!newGoal.name || !newGoal.target) return;
@@ -57,15 +68,48 @@ export default function GoalsPage() {
         <button className="ss-btn-coral" onClick={() => setShowCreate(true)}>+ New goal</button>
       </div>
 
-      {allocBanner && (
+      {allocCheck?.pending && !allocDone && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '14px 18px', borderRadius: 14, background: '#FFF6E5', border: '1.5px solid #F5A623', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 20 }}>💰</span>
+            <div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#7a4f10' }}>
+                {allocCheck.monthLabel} had <strong>{formatINR(allocCheck.surplus!)}</strong> budget surplus
+              </div>
+              <div style={{ fontSize: 12, color: '#a07030', marginTop: 2 }}>
+                Distribute to {allocCheck.distributions!.length} auto-allocate goal{allocCheck.distributions!.length > 1 ? 's' : ''}?
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              className="ss-btn-outline ss-btn-sm"
+              onClick={() => setAllocDone(true)}
+              style={{ fontSize: 12 }}
+            >
+              Skip
+            </button>
+            <button
+              className="ss-btn-coral ss-btn-sm"
+              onClick={handleConfirmAlloc}
+              disabled={confirmAlloc.isPending}
+              style={{ fontSize: 12 }}
+            >
+              {confirmAlloc.isPending ? 'Allocating…' : 'Yes, allocate'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {allocDone && confirmAlloc.data?.allocated && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 18px', borderRadius: 14, background: '#EAF7F0', border: '1.5px solid #4CAF82' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 20 }}>✨</span>
+            <span style={{ fontSize: 18 }}>✨</span>
             <span style={{ fontSize: 13.5, fontWeight: 600, color: '#2d7a52' }}>
-              Auto-allocated <strong>{formatINR(allocBanner.surplus)}</strong> surplus across {allocBanner.count} goal{allocBanner.count > 1 ? 's' : ''} this month
+              <strong>{formatINR(confirmAlloc.data.surplus!)}</strong> distributed to {confirmAlloc.data.distributions!.length} goal{confirmAlloc.data.distributions!.length > 1 ? 's' : ''}
             </span>
           </div>
-          <button onClick={() => setAllocBanner(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#4CAF82', padding: '0 4px', lineHeight: 1 }}>✕</button>
+          <button onClick={() => setAllocDone(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#4CAF82', padding: '0 4px' }}>✕</button>
         </div>
       )}
 
@@ -115,22 +159,58 @@ export default function GoalsPage() {
       </div>
 
       {/* Streak */}
-      <Card style={{ padding: 24, background: 'var(--dark-card)', color: '#fff' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          <div style={{ fontSize: 34 }}>🔥</div>
-          <div style={{ flex: 1, minWidth: 180 }}>
-            <div style={{ fontWeight: 800, fontSize: 18, fontFamily: 'var(--font-head)' }}>14-day saving streak!</div>
-            <div style={{ fontSize: 13.5, color: 'rgba(255,255,255,.55)', marginTop: 2 }}>Keep going — you&apos;re building a great habit.</div>
-          </div>
-          <div style={{ display: 'flex', gap: 9 }}>
-            {['M','T','W','T','F','S','S'].map((d, i) => (
-              <div key={i} style={{ textAlign: 'center' }}>
-                <div style={{ width: 34, height: 34, borderRadius: '50%', display: 'grid', placeItems: 'center', background: STREAK_WEEK[i] ? 'var(--coral)' : 'rgba(255,255,255,.1)', color: STREAK_WEEK[i] ? '#fff' : 'rgba(255,255,255,.35)', fontSize: 14, fontWeight: 700 }}>
-                  {STREAK_WEEK[i] ? '✓' : ''}
-                </div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)', marginTop: 5 }}>{d}</div>
+      <Card style={{ padding: '22px 24px', background: 'var(--dark-card)', color: '#fff' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {/* Top row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 36, lineHeight: 1 }}>{(streakData?.streak ?? 0) > 0 ? '🔥' : '💤'}</div>
+            <div style={{ flex: 1, minWidth: 160 }}>
+              <div style={{ fontWeight: 800, fontSize: 18, fontFamily: 'var(--font-head)' }}>
+                {streakLabel(streakData?.streak ?? 0)}
               </div>
-            ))}
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,.55)', marginTop: 3 }}>
+                {streakMotivation(streakData?.streak ?? 0)}
+              </div>
+            </div>
+            {/* Best streak badge */}
+            {(streakData?.best ?? 0) > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(255,255,255,.08)', borderRadius: 14, padding: '10px 16px', minWidth: 64 }}>
+                <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'var(--font-head)', color: '#FFD700' }}>{streakData!.best}</div>
+                <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,.45)', marginTop: 2, textAlign: 'center', lineHeight: 1.3 }}>best<br/>streak</div>
+              </div>
+            )}
+          </div>
+
+          {/* Week dots */}
+          <div style={{ display: 'flex', gap: 0, justifyContent: 'space-between' }}>
+            {['M','T','W','T','F','S','S'].map((d, i) => {
+              const active = streakData?.weekActivity?.[i] ?? false;
+              const today = new Date();
+              const dow = today.getDay();
+              const todayIdx = dow === 0 ? 6 : dow - 1;
+              const isFuture = i > todayIdx;
+              return (
+                <div key={i} style={{ textAlign: 'center', flex: 1 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', margin: '0 auto',
+                    background: active ? 'var(--coral)' : isFuture ? 'rgba(255,255,255,.04)' : 'rgba(255,255,255,.1)',
+                    color: active ? '#fff' : isFuture ? 'rgba(255,255,255,.15)' : 'rgba(255,255,255,.3)',
+                    fontSize: 14, fontWeight: 700,
+                    boxShadow: active ? '0 2px 10px rgba(232,115,90,.5)' : 'none',
+                    border: i === todayIdx && !active ? '1.5px solid rgba(255,255,255,.25)' : 'none',
+                    transition: 'background .2s',
+                  }}>
+                    {active ? '✓' : isFuture ? '' : '–'}
+                  </div>
+                  <div style={{ fontSize: 11, color: i === todayIdx ? 'rgba(255,255,255,.7)' : 'rgba(255,255,255,.35)', marginTop: 6, fontWeight: i === todayIdx ? 700 : 400 }}>{d}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer hint */}
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,.3)', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,.08)', paddingTop: 14 }}>
+            Streak counts days you logged a savings expense
           </div>
         </div>
       </Card>
