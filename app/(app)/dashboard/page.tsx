@@ -37,7 +37,7 @@ function getHeroGreeting(
   todaySpend: number,
   dailyLimit: number,
   spent: number,
-): { headline: string; sub: string } {
+): { text: string; emoji: string; sub: string } {
   const now    = new Date();
   const h      = now.getHours();
   const day    = now.getDay();
@@ -54,24 +54,24 @@ function getHeroGreeting(
   const timeEmoji   = isMorning ? '☀️' : isAfternoon ? '⚡' : h >= 21 ? '🦉' : '🌙';
 
   if (date === 1)
-    return { headline: `Fresh start, ${first} ✨`, sub: `${month} budget just unlocked.` };
+    return { text: `Fresh start, ${first}`, emoji: '✨', sub: `${month} budget just unlocked.` };
   if (daysLeft <= 3 && spent > 0)
-    return { headline: `Final stretch, ${first} 🏁`, sub: `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left in ${month}.` };
+    return { text: `Final stretch, ${first}`, emoji: '🏁', sub: `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left in ${month}.` };
   if (streak >= 10)
-    return { headline: `${streak} days clean 🔥`, sub: `${first}, that streak is something special.` };
+    return { text: `${streak} days clean`, emoji: '🔥', sub: `${first}, that streak is something special.` };
   if (streak >= 5)
-    return { headline: `${streak}-day streak, ${first} 🔥`, sub: 'Consistency is paying off.' };
+    return { text: `${streak}-day streak, ${first}`, emoji: '🔥', sub: 'Consistency is paying off.' };
   if (day === 1 && isMorning)
-    return { headline: `Monday reset, ${first} 🚀`, sub: 'New week, clean slate.' };
+    return { text: `Monday reset, ${first}`, emoji: '🚀', sub: 'New week, clean slate.' };
   if ((day === 0 || day === 6) && !isMorning)
-    return { headline: `Weekend mode, ${first} 🎉`, sub: 'Tracking through the fun.' };
+    return { text: `Weekend mode, ${first}`, emoji: '🎉', sub: 'Tracking through the fun.' };
   if (paceAhead > 20)
-    return { headline: `Watch the pace, ${first} ⚡`, sub: `${paceAhead}% ahead of budget pace — adjust today.` };
+    return { text: `Watch the pace, ${first}`, emoji: '⚡', sub: `${paceAhead}% ahead of budget pace — adjust today.` };
   if (paceAhead <= 0 && spent > 0)
-    return { headline: `On track, ${first} ✅`, sub: 'Budget pace is looking healthy.' };
+    return { text: `On track, ${first}`, emoji: '✅', sub: 'Budget pace is looking healthy.' };
   if (isEvening && dailyLimit > 0 && todaySpend < dailyLimit)
-    return { headline: `Solid day, ${first} 💪`, sub: 'Under the daily limit — keep it up.' };
-  return { headline: `${timeWord}, ${first} ${timeEmoji}`, sub: dateStr };
+    return { text: `Solid day, ${first}`, emoji: '💪', sub: 'Under the daily limit — keep it up.' };
+  return { text: `${timeWord}, ${first}`, emoji: timeEmoji, sub: dateStr };
 }
 
 export default function DashboardPage() {
@@ -114,7 +114,7 @@ export default function DashboardPage() {
   const timePct = Math.round((daysElapsed / daysInMonth) * 100);
   const paceAhead = usedPct - timePct;
 
-  const { headline, sub } = getHeroGreeting(
+  const { text: greetingText, emoji: greetingEmoji, sub } = getHeroGreeting(
     user?.name ?? 'there',
     streak,
     paceAhead,
@@ -170,7 +170,10 @@ export default function DashboardPage() {
         <div className="ss-hero__bloom" />
         <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
           <div>
-            <div className="ss-hero-greeting">{headline}</div>
+            <div className="ss-hero-greeting">
+              {greetingText}{' '}
+              <span style={{ WebkitTextFillColor: 'initial', backgroundClip: 'unset', color: 'initial' }}>{greetingEmoji}</span>
+            </div>
             <div className="ss-hero-greeting__sub">{sub}</div>
             <div style={{ fontSize: 13.5, color: 'rgba(255,255,255,.38)', marginTop: 10 }}>
               {now.toLocaleString('en-IN', { month: 'long', year: 'numeric' })} · <Money value={spent} /> spent so far
