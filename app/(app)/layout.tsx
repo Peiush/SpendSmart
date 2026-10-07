@@ -62,6 +62,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { setMoreOpen(false); }, [pathname]);
 
+  // Launched from the home-screen "Add expense" shortcut (/dashboard?add=1)
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('add') === '1') {
+      setModal(true);
+      url.searchParams.delete('add');
+      window.history.replaceState(null, '', url.pathname + url.search);
+    }
+  }, []);
+
   const showFab = pathname === '/dashboard' || pathname === '/expenses';
   const title = TITLES[pathname] ?? 'SpendSmart';
   const initials = user?.name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() ?? '?';

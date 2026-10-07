@@ -1,7 +1,7 @@
 {
   "name": "Rupeefy",
   "short_name": "Rupeefy",
-  "description": "Personal money management — track expenses, budgets & goals",
+  "description": "Personal money management \u2014 track expenses, budgets & goals",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#1C1C2E",
@@ -19,6 +19,21 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add expense",
+      "short_name": "Add expense",
+      "description": "Quickly log a new expense",
+      "url": "/dashboard?add=1",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }
